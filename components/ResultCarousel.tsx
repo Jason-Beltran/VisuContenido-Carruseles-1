@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { GeneratedSlide, TYPOGRAPHY_STYLES, DICTIONARY, RenderMode } from '../types';
 
 interface ResultCarouselProps {
@@ -9,9 +9,13 @@ interface ResultCarouselProps {
   typographyId: string;
   language: 'en' | 'es';
   renderMode: RenderMode;
+  onRegenerate: (slideId: number, refinementText?: string) => void;
 }
 
-export const ResultCarousel: React.FC<ResultCarouselProps> = ({ slides, brandColor, showPageNumbers, typographyId, language, renderMode }) => {
+export const ResultCarousel: React.FC<ResultCarouselProps> = ({ slides, brandColor, showPageNumbers, typographyId, language, renderMode, onRegenerate }) => {
+  const [editingSlideId, setEditingSlideId] = useState<number | null>(null);
+  const [refinementText, setRefinementText] = useState("");
+
   if (slides.length === 0) return null;
 
   const t = DICTIONARY[language];
@@ -49,8 +53,21 @@ export const ResultCarousel: React.FC<ResultCarouselProps> = ({ slides, brandCol
     return styles;
   };
 
+  const openRegenerateModal = (id: number) => {
+    setEditingSlideId(id);
+    setRefinementText("");
+  };
+
+  const handleConfirmRegenerate = () => {
+    if (editingSlideId !== null) {
+      onRegenerate(editingSlideId, refinementText);
+      setEditingSlideId(null);
+      setRefinementText("");
+    }
+  };
+
   return (
-    <div className="mt-12">
+    <div className="mt-12 relative">
       <h2 className="text-xl font-display font-bold text-white mb-6 tracking-wide flex items-center">
         <span 
           className="w-2 h-8 mr-3 transition-colors duration-300" 
@@ -92,6 +109,12 @@ export const ResultCarousel: React.FC<ResultCarouselProps> = ({ slides, brandCol
               {slide.status === 'error' && (
                  <div className="absolute inset-0 flex items-center justify-center bg-red-900/20 text-red-400 p-4 text-center text-sm">
                    {slide.error || "Generation Failed"}
+                   <button 
+                     onClick={() => openRegenerateModal(slide.id)}
+                     className="mt-2 text-xs font-bold underline"
+                   >
+                     Retry
+                   </button>
                  </div>
               )}
 
@@ -104,6 +127,22 @@ export const ResultCarousel: React.FC<ResultCarouselProps> = ({ slides, brandCol
                 />
               )}
 
+              {/* Action Buttons (Hover) - Top Right */}
+              <div className="absolute top-4 right-4 z-30 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                 {/* Regenerate Button */}
+                 {(slide.status === 'completed' || slide.status === 'error') && (
+                    <button
+                      onClick={() => openRegenerateModal(slide.id)}
+                      className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white hover:bg-white hover:text-black transition-all border border-white/20 shadow-lg"
+                      title={language === 'es' ? 'Regenerar con ajustes' : 'Regenerate with feedback'}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                      </svg>
+                    </button>
+                 )}
+              </div>
+
               {/* UI Overlay (Buttons/Badges) - Only UI, no Content Text if Baked */}
               <div className={`absolute inset-0 flex flex-col justify-between z-20 pointer-events-none ${dynamicStyles.containerPadding}`}>
                 
@@ -113,7 +152,7 @@ export const ResultCarousel: React.FC<ResultCarouselProps> = ({ slides, brandCol
                 )}
 
                 {/* Top Section */}
-                <div className="w-full">
+                <div className="w-full pointer-events-none">
                   {/* Progress Bar - Always Visible */}
                   <div className="w-full h-1 bg-white/20 mb-4 rounded-full overflow-hidden">
                      <div 
@@ -146,7 +185,7 @@ export const ResultCarousel: React.FC<ResultCarouselProps> = ({ slides, brandCol
                 </div>
 
                 {/* Bottom Section - Content Text */}
-                <div className="mt-auto mb-2 max-w-[95%]">
+                <div className="mt-auto mb-2 max-w-[95%] pointer-events-none">
                   {/* 
                      RENDER MODE LOGIC:
                      If 'ai-baked': HIDE ALL HTML TEXT. The image contains everything.
@@ -185,10 +224,13 @@ export const ResultCarousel: React.FC<ResultCarouselProps> = ({ slides, brandCol
                   <a 
                     href={slide.imageUrl} 
                     download={`slide-${slide.id}.png`}
-                    className="px-4 py-2 rounded font-bold text-xs uppercase text-black hover:text-black hover:brightness-110 transition-all pointer-events-auto shadow-lg"
+                    className="px-4 py-2 rounded font-bold text-xs uppercase text-black hover:text-black hover:brightness-110 transition-all pointer-events-auto shadow-lg flex items-center gap-2"
                     style={{ backgroundColor: brandColor }}
                   >
-                    {t.download}
+                    <span>{t.download}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
                   </a>
                 </div>
               )}
@@ -196,6 +238,48 @@ export const ResultCarousel: React.FC<ResultCarouselProps> = ({ slides, brandCol
           );
         })}
       </div>
+
+      {/* Regeneration Modal */}
+      {editingSlideId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setEditingSlideId(null)}></div>
+          <div className="relative bg-visu-gray border border-white/20 rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h3 className="text-xl font-display font-bold text-white mb-2 uppercase">
+              {language === 'es' ? 'Regenerar Slide' : 'Regenerate Slide'}
+            </h3>
+            <p className="text-xs text-gray-400 mb-4">
+               {language === 'es' 
+                 ? '¿Qué quieres cambiar? (Ej: "Hazlo más brillante", "Quita la laptop", "Mejora el rostro")' 
+                 : 'What would you like to change? (e.g. "Make it brighter", "Remove laptop", "Fix face")'}
+            </p>
+            
+            <textarea
+              className="w-full bg-visu-black border border-white/10 rounded p-3 text-white text-sm focus:border-white/50 focus:outline-none mb-4 min-h-[100px]"
+              placeholder={language === 'es' ? 'Describe los cambios...' : 'Describe changes...'}
+              value={refinementText}
+              onChange={(e) => setRefinementText(e.target.value)}
+              autoFocus
+            />
+
+            <div className="flex gap-2 justify-end">
+              <button 
+                onClick={() => setEditingSlideId(null)}
+                className="px-4 py-2 rounded text-xs font-bold uppercase text-gray-400 hover:text-white transition-colors"
+              >
+                {language === 'es' ? 'Cancelar' : 'Cancel'}
+              </button>
+              <button 
+                onClick={handleConfirmRegenerate}
+                className="px-6 py-2 rounded text-xs font-bold uppercase text-visu-black transition-colors"
+                style={{ backgroundColor: brandColor }}
+              >
+                {language === 'es' ? 'Confirmar' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

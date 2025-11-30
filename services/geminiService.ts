@@ -75,10 +75,16 @@ export const generateCarouselPlan = async (
     
     3. VISUAL DIRECTION RULES:
        - NO REPETITIVE POSES. Every slide must have a distinct Camera Angle and Pose.
-       - USE VISUAL METAPHORS: If the script says "50 views", the image MUST show a phone with a low number graph. If it says "10k views", show a viral graph. If it says "Structure", show a blueprint/hologram.
-       - CHARACTER PRESENCE (70/30 Rule):
-         - For roughly 70% of slides (especially Hook, Connection, CTA), set "includeCharacter": true.
-         - For roughly 30% of slides (especially Data, detailed Steps, Metaphors), set "includeCharacter": false to focus purely on the illustration/infographic.
+       - USE LITERAL VISUAL METAPHORS: 
+         - **CRITICAL**: The image MUST explain the text. 
+         - If text says "50 views", show a phone with a red line graph going down. 
+         - If text says "Structure", show a blueprint, scaffold, or 3D wireframe.
+         - If text says "Growth", show a green arrow going up or a plant growing from money.
+         - DO NOT simply describe "A person looking serious". Describe the OBJECTS that explain the concept.
+       
+       - CHARACTER PRESENCE (65/35 Rule):
+         - For roughly 65% of slides (Hook, Connection, CTA), set "includeCharacter": true.
+         - For roughly 35% of slides (Deep Education, Data, Specific Steps), set "includeCharacter": false. Prioritize the infographic/illustration.
     
     Output Language: ${config.language === 'es' ? 'Spanish' : 'English'}.
     Visual Style: "${config.visualStyle}".
@@ -122,7 +128,7 @@ export const generateCarouselPlan = async (
     3. "imagePrompt": A highly detailed prompt for Gemini 3 Pro.
        - Start with "A ${config.visualStyle} shot...".
        - CAM ANGLES: Vary these! (Slide 1: Extreme Close Up. Slide 2: Wide Shot. Slide 3: Over the shoulder. Slide 4: Dutch Angle).
-       - INFOGRAPHIC INSTRUCTIONS: If this is an educational step, include "Floating 3D list", "Holographic chart", or "Step-by-step diagram" in the prompt.
+       - **ILLUSTRATE THE VALUE**: The prompt MUST describe the "subheadline" concept visually. If the text says "Write a script", the prompt MUST contain "A messy notebook with handwritten notes". If it says "Lighting", show a softbox light.
        ${isBaked 
          ? `- VITAL: This is 'AI-BAKED' mode. The image must contain the content.
             - If the slide implies a list, render a stylized 3D list in the air.
@@ -185,16 +191,15 @@ export const generateCarouselPlan = async (
  */
 export const generateSlideImage = async (
   plan: SlidePlan,
-  referenceImageBase64: string,
-  config: UserConfig
+  referenceImageBase64: string | null, // Made optional
+  config: UserConfig,
+  refinementPrompt?: string // NEW: Optional user feedback for regeneration
 ): Promise<string> => {
   
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const cleanBase64 = referenceImageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
   const isBaked = config.renderMode === 'ai-baked';
 
   // Resolve the visual style prompt.
-  // If it matches a preset ID, use the detailed description. Otherwise use the raw string.
   const presetStyle = VISUAL_STYLES.find(s => s.id === config.visualStyle);
   const styleDescription = presetStyle ? presetStyle.description : config.visualStyle;
 
@@ -205,37 +210,45 @@ export const generateSlideImage = async (
     fullPrompt = `
       GENERATE A MASTERPIECE VISUAL for a high-end social media carousel.
       
-      CORE CONCEPT: ${plan.visualMetaphor}
+      CORE CONCEPT (VALUE ILLUSTRATION): ${plan.visualMetaphor}
       STYLE DEFINITION: ${styleDescription} (Strictly adhere to this aesthetic).
       
       SCENE DESCRIPTION: ${plan.imagePrompt}
       
-      *** TEXT INTEGRATION (CRITICAL) ***
+      *** VISUAL VALUE EXPLANATION (CRITICAL) ***
+      The purpose of this image is to EDUCATE.
+      The visual elements must explain this concept: "${plan.textOverlay.subheadline}".
+      - Do not just make it pretty. Make it descriptive.
+      - If explaining a process, show the steps visually (e.g. 1, 2, 3 floating objects).
+      - If explaining a mistake, show the error visually (e.g. a red cross, broken object).
+      
+      *** TEXT INTEGRATION ***
       The Headline text "${plan.textOverlay.headline}" MUST be NATIVELY INTEGRATED into the environment (Diegetic Text).
-      It should NOT look like a digital overlay or sticker. It must be a physical part of the scene.
       
       INTEGRATION METHOD (Choose based on style '${config.visualStyle}'):
-      - If 'Minimalist': Embossed text on a wall, printed on a book cover, clean 3D letters standing on a desk, or text on a smooth screen.
-      - If 'Cinematic': Cinematic movie title typography floating in depth, projected light text on a surface, or backlit lettering.
-      - If 'Urban': Graffiti art, poster on a wall, or billboard.
-      - If 'Tech': Holographic interface, code on a monitor, or LED display.
+      - If 'Minimalist': Embossed text on a wall, printed on a book cover, clean 3D letters standing on a desk.
+      - If 'Cinematic': Cinematic movie title typography floating in depth.
+      - If 'Urban': Graffiti art, poster on a wall.
+      - If 'Tech': Holographic interface.
       
       VISUAL COHERENCE:
-      - The text must interact with the scene's lighting (casting shadows, reflecting environment).
-      - Use depth of field to make the text feel embedded.
+      - The text must interact with the scene's lighting.
       - Color: Integrate ${config.brandColor} into the text or scene accents naturally.
-      
-      ANTI-NEON RULE:
-      - Do NOT use 'Neon' styles unless the visual style explicitly requests it. 
-      - If style is 'Professional' or 'Minimalist', use solid, clean materials for text (Plastic, Metal, Paint, Ink).
     `;
     
-    // Character Logic
+    // Character Logic for Baked
     if (plan.includeCharacter) {
-      fullPrompt += `
-        - The character (Reference Person) must be present.
-        - The character should INTERACT with the text or data (looking at it, pointing, holding it).
-      `;
+      if (referenceImageBase64) {
+        fullPrompt += `
+          - The character (Reference Person) must be present.
+          - The character should INTERACT with the text or data (looking at it, pointing, holding it).
+        `;
+      } else {
+        fullPrompt += `
+          - A generated character fitting the profession '${config.profession}' must be present.
+          - The character should INTERACT with the text or data.
+        `;
+      }
     } else {
       fullPrompt += `
          - NO CHARACTER in this shot. Focus entirely on the illustration, infographic, object, or concept.
@@ -248,26 +261,53 @@ export const generateSlideImage = async (
     fullPrompt = `
       Prompt: ${plan.imagePrompt}. 
       Visual Metaphor: ${plan.visualMetaphor}.
+      
+      EDUCATIONAL VISUAL REQUIREMENT:
+      This image illustrates the concept: "${plan.textOverlay.subheadline}".
+      Ensure the objects in the scene (props, background elements, screens) TELL THIS STORY.
+      Example: If the text implies 'Writing', show a pen and paper. If 'Analysis', show data.
+      
       Style Guidelines: ${styleDescription}.
       Color Palette: Dominant dark/neutral with accents of ${config.brandColor}.
       Quality: Hyper-realistic photography, 8k resolution, cinematic lighting.
       
-      STRICT REQUIREMENT: 
-      ${plan.includeCharacter ? "The person in the image must look exactly like the reference image provided." : "NO PERSON in this image. Focus on the object/concept/infographic."}
+      CHARACTER INSTRUCTION: 
+      ${plan.includeCharacter 
+         ? (referenceImageBase64 ? "The person in the image must look exactly like the reference image provided." : `Generate a professional ${config.profession} character fitting the style.`)
+         : "NO PERSON in this image. Focus on the object/concept/infographic."}
       
       CRITICAL: DO NOT include any text in the image. Keep the background clean/negative space for overlay text.
     `;
   }
 
+  // --- REFINEMENT LOGIC ---
+  if (refinementPrompt) {
+    fullPrompt += `
+    
+    *** IMPORTANT: USER ADJUSTMENT REQUEST ***
+    The user did not like the previous result. Please adjust based on this feedback:
+    "${refinementPrompt}"
+    
+    - If they ask to remove something, ensure it is gone.
+    - If they ask to fix the face, prioritize facial fidelity.
+    - If they ask for more brightness, change the lighting.
+    `;
+  }
+
   const parts: any[] = [
-    { text: fullPrompt },
-    {
+    { text: fullPrompt }
+  ];
+
+  // Add Reference Image if provided
+  if (referenceImageBase64 && plan.includeCharacter) {
+    const cleanBase64 = referenceImageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
+    parts.push({
       inlineData: {
         mimeType: "image/jpeg",
         data: cleanBase64,
       },
-    }
-  ];
+    });
+  }
 
   // Add Logo if available
   if (config.logoImage) {

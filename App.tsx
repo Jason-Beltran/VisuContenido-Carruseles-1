@@ -70,8 +70,6 @@ const App: React.FC = () => {
         setSlides(prev => prev.map(s => s.id === updatedSlides[i].id ? { ...s, status: 'generating' } : s));
         
         try {
-          if (!config.referenceImage) throw new Error("Reference image lost");
-          
           const imageUrl = await generateSlideImage(
             updatedSlides[i], 
             config.referenceImage,
@@ -110,6 +108,39 @@ const App: React.FC = () => {
     }
   };
 
+  const handleRegenerateSlide = async (slideId: number, refinementPrompt?: string) => {
+    setError(null);
+    
+    // 1. Set Status to Generating
+    setSlides(prev => prev.map(s => s.id === slideId ? { ...s, status: 'generating' } : s));
+
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide) return;
+
+    try {
+      // 2. Regenerate Image
+      const imageUrl = await generateSlideImage(
+        slide,
+        config.referenceImage,
+        config,
+        refinementPrompt
+      );
+      
+      // 3. Update Status
+      setSlides(prev => prev.map(s => s.id === slideId ? { ...s, status: 'completed', imageUrl } : s));
+    } catch (err: any) {
+       console.error(`Error regenerating slide ${slideId}`, err);
+       setSlides(prev => prev.map(s => s.id === slideId ? { ...s, status: 'error', error: err.message || "Regeneration Failed" } : s));
+       
+       if (err.message && err.message.includes("Requested entity was not found")) {
+         setHasKey(false);
+         if ((window as any).aistudio) {
+           await (window as any).aistudio.openSelectKey();
+         }
+       }
+    }
+  };
+
   if (!hasKey) {
      // Hardcoded fallback for pre-config load
      return (
@@ -119,7 +150,7 @@ const App: React.FC = () => {
              </h1>
              <p className="mb-8 text-gray-400 max-w-md">
                {config.language === 'en' 
-                ? 'To use the high-quality image generation features (Gemini 3 Pro), please connect your Google Cloud API Key.' 
+                ? 'To use the high-quality image generation features (Gemini 3 Pro), please connect your Google Cloud API Key.'
                 : 'Para usar las funciones de generación de imágenes de alta calidad (Gemini 3 Pro), conecta tu Google Cloud API Key.'}
              </p>
              <button onClick={handleSelectKey} className="bg-visu-accent text-visu-black hover:bg-yellow-300 px-8 py-4 rounded font-bold uppercase tracking-wider transition-colors shadow-[0_0_20px_rgba(250,204,21,0.3)]">
@@ -192,6 +223,7 @@ const App: React.FC = () => {
           typographyId={config.typography}
           language={config.language}
           renderMode={config.renderMode}
+          onRegenerate={handleRegenerateSlide}
         />
         
         {/* Footer */}

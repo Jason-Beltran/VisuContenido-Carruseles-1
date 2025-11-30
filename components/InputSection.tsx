@@ -44,8 +44,8 @@ export const InputSection: React.FC<InputSectionProps> = ({ config, setConfig, o
     }
   };
 
-  const isReady = config.profession && config.referenceImage && 
-    (config.mode === 'topic' ? config.topic.length > 0 : config.customScript.length > 0);
+  // Ready if profession is set AND either topic or script is present. Reference image is now optional.
+  const isReady = config.profession && (config.mode === 'topic' ? config.topic.length > 0 : config.customScript.length > 0);
 
   return (
     <div className="bg-visu-gray border border-white/10 rounded-xl p-6 mb-8 shadow-2xl relative">
@@ -245,7 +245,7 @@ export const InputSection: React.FC<InputSectionProps> = ({ config, setConfig, o
           <div className="grid grid-cols-2 gap-4">
              {/* Reference Image (Person) */}
              <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">{t.refPerson}</label>
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">{t.refPerson} (Optional)</label>
               <div 
                 onClick={() => fileInputRef.current?.click()}
                 className={`w-full h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group
