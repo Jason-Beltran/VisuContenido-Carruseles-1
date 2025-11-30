@@ -1,3 +1,4 @@
+
 export interface SlidePlan {
   id: number;
   textOverlay: {
@@ -5,8 +6,10 @@ export interface SlidePlan {
     subheadline: string;
     tagline?: string;
   };
-  imagePrompt: string;
+  visualMetaphor: string; // NEW: The explicit visual idea (e.g. "Phone with flatline graph")
+  imagePrompt: string; // The full artistic prompt
   compositionNotes?: string; // Guidance on where to put text or subject
+  includeCharacter: boolean;
 }
 
 export interface GeneratedSlide extends SlidePlan {
@@ -26,6 +29,13 @@ export interface TypographyStyle {
   fontFamilyBody: string;
 }
 
+export interface VisualPreset {
+  id: string;
+  name: string;
+  description: string; // Prompt instruction
+  icon: string;
+}
+
 export interface UserConfig {
   profession: string;
   topic: string; // Used in Topic Mode
@@ -34,8 +44,9 @@ export interface UserConfig {
   renderMode: RenderMode; // NEW: Determines if text is CSS or Image-based
   referenceImage: string | null; // Base64 - Person
   styleReferenceImage: string | null; // Base64 - Design Style
+  logoImage?: string | null; // Base64 - Logo
   brandColor: string;
-  visualStyle: string;
+  visualStyle: string; // This will hold the ID of the preset OR the custom string
   typography: string; // ID of TypographyStyle
   showPageNumbers: boolean;
   language: Language;
@@ -65,6 +76,45 @@ export const TYPOGRAPHY_STYLES: TypographyStyle[] = [
   { id: 'tech', name: 'Tech & Future', fontFamilyDisplay: 'Orbitron', fontFamilyBody: 'Roboto Mono' },
 ];
 
+export const VISUAL_STYLES: VisualPreset[] = [
+  { 
+    id: 'cinematic', 
+    name: 'Cinematic Motivational', 
+    description: 'High contrast, dramatic lighting, movie poster aesthetic, rich textures, depth of field, focused and intense atmosphere.',
+    icon: '🎬' 
+  },
+  { 
+    id: 'minimal', 
+    name: 'Minimalist Clean', 
+    description: 'High key lighting, lots of negative space, soft shadows, clean lines, Apple-style aesthetic, sterile but premium environment.',
+    icon: '⚪' 
+  },
+  { 
+    id: 'cyberpunk', 
+    name: 'Cyberpunk / Tech', 
+    description: 'Neon accents, dark urban environment, holographic elements, futuristic interfaces, blue and purple tones (unless brand color differs).',
+    icon: '🤖' 
+  },
+  { 
+    id: 'editorial', 
+    name: 'Editorial / Fashion', 
+    description: 'Studio lighting, grain texture, fashion magazine editorial look, artistic angles, bold composition.',
+    icon: '📸' 
+  },
+  { 
+    id: 'business', 
+    name: 'Modern Business', 
+    description: 'Professional office environment, blurred city backgrounds, glass textures, suits, premium corporate look.',
+    icon: '💼' 
+  },
+  { 
+    id: 'urban', 
+    name: 'Urban Street', 
+    description: 'Street photography style, concrete textures, natural light, candid but polished, raw and authentic.',
+    icon: '🏙️' 
+  },
+];
+
 export const DICTIONARY = {
   en: {
     configTitle: 'CONFIGURATION',
@@ -73,11 +123,11 @@ export const DICTIONARY = {
     modeCustom: 'Custom Script',
     renderModeLabel: 'Text Rendering Mode',
     renderOverlay: 'Professional Overlay (Crisp Text)',
-    renderBaked: 'AI Integrated (Cinematic/Neon)',
+    renderBaked: 'AI Integrated (Image Only)',
     topicLabel: 'Topic',
     scriptLabel: 'Script / Scene Breakdown',
     scriptHint: 'Provide rough notes or scene-by-scene',
-    visualStyle: 'Visual Style',
+    visualStyle: 'Visual Aesthetic',
     refPerson: 'Reference Person (Selfie)',
     refStyle: 'Carousel Style Ref (Optional)',
     clickUpload: 'CLICK TO UPLOAD',
@@ -86,7 +136,7 @@ export const DICTIONARY = {
     typography: 'Typography Style',
     pageNumbers: 'Show Page Numbers',
     generateBtn: 'GENERATE CAROUSEL',
-    generatingBtn: 'GENERATING CONTENT...',
+    generatingBtn: 'GENERATING CONTENIDO...',
     results: 'RESULTS PREVIEW',
     rendering: 'Rendering...',
     download: 'Download',
@@ -94,9 +144,12 @@ export const DICTIONARY = {
     optimizing: 'Optimizing...',
     connectKey: 'To use the high-quality image generation features (Gemini 3 Pro), please connect your Google Cloud API Key.',
     connectBtn: 'Connect API Key',
-    stepPlanning: 'Crafting Narrative Strategy...',
+    stepPlanning: 'Analyzing Content density & Planning Infographics...',
     error: 'ERROR',
-    poweredBy: 'Powered by Gemini 2.5 Flash & Gemini 3 Pro Vision'
+    poweredBy: 'Powered by Gemini 2.5 Flash & Gemini 3 Pro Vision',
+    customStylePlaceholder: 'Describe your custom style...',
+    selectStyle: 'Select Style',
+    custom: 'Custom'
   },
   es: {
     configTitle: 'CONFIGURACIÓN',
@@ -105,11 +158,11 @@ export const DICTIONARY = {
     modeCustom: 'Guion Personalizado',
     renderModeLabel: 'Modo de Texto',
     renderOverlay: 'Superposición Pro (Texto Nítido)',
-    renderBaked: 'Integrado por IA (Cinemático/Neón)',
+    renderBaked: 'Integrado por IA (Solo Imagen)',
     topicLabel: 'Tema',
     scriptLabel: 'Guion / Desglose de Escenas',
     scriptHint: 'Provee notas generales o escena por escena',
-    visualStyle: 'Estilo Visual',
+    visualStyle: 'Estética Visual',
     refPerson: 'Referencia Persona (Selfie)',
     refStyle: 'Ref. Estilo Carrusel (Opcional)',
     clickUpload: 'CLIC PARA SUBIR',
@@ -126,8 +179,11 @@ export const DICTIONARY = {
     optimizing: 'Optimizando...',
     connectKey: 'Para usar las funciones de generación de imágenes de alta calidad (Gemini 3 Pro), conecta tu Google Cloud API Key.',
     connectBtn: 'Conectar API Key',
-    stepPlanning: 'Creando Estrategia Narrativa...',
+    stepPlanning: 'Analizando densidad y Planificando Infografías...',
     error: 'ERROR',
-    poweredBy: 'Impulsado por Gemini 2.5 Flash y Gemini 3 Pro Vision'
+    poweredBy: 'Impulsado por Gemini 2.5 Flash y Gemini 3 Pro Vision',
+    customStylePlaceholder: 'Describe tu estilo personalizado...',
+    selectStyle: 'Seleccionar Estilo',
+    custom: 'Personalizado'
   }
 };

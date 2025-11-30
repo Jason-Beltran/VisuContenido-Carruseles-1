@@ -1,5 +1,6 @@
+
 import React, { useRef, useState } from 'react';
-import { UserConfig, COLOR_PALETTES, TYPOGRAPHY_STYLES, DICTIONARY } from '../types';
+import { UserConfig, COLOR_PALETTES, TYPOGRAPHY_STYLES, DICTIONARY, VISUAL_STYLES } from '../types';
 import { improveScriptWithAI } from '../services/geminiService';
 
 interface InputSectionProps {
@@ -12,11 +13,13 @@ interface InputSectionProps {
 export const InputSection: React.FC<InputSectionProps> = ({ config, setConfig, onGenerate, isGenerating }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const styleInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [isImproving, setIsImproving] = useState(false);
+  const [isCustomStyle, setIsCustomStyle] = useState(!VISUAL_STYLES.some(s => s.id === config.visualStyle));
 
   const t = DICTIONARY[config.language];
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'referenceImage' | 'styleReferenceImage') => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'referenceImage' | 'styleReferenceImage' | 'logoImage') => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -168,26 +171,56 @@ export const InputSection: React.FC<InputSectionProps> = ({ config, setConfig, o
                   {t.renderBaked}
                   <span className="text-[8px] bg-purple-500 text-black px-1 rounded font-bold">PRO</span>
                 </div>
-                <div className="text-[10px] text-gray-400">PRO: Full Image + Text Generation</div>
+                <div className="text-[10px] text-gray-400">PRO: Full Image + Integrated Text</div>
                 {config.renderMode === 'ai-baked' && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-purple-400"></div>}
               </button>
             </div>
           </div>
 
 
-          {/* Visual Style Input */}
-           <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">{t.visualStyle}</label>
-            <input
-              type="text"
-              value={config.visualStyle}
-              onChange={(e) => setConfig({ ...config, visualStyle: e.target.value })}
-              placeholder="e.g. Cinematic Motivational, Cyberpunk, Minimalist Clean"
-              className="w-full bg-visu-black border border-white/20 rounded p-3 text-white focus:outline-none transition-colors focus:border-white/50"
-            />
+          {/* Visual Style Selector */}
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">{t.visualStyle}</label>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {VISUAL_STYLES.map(style => (
+                 <button 
+                   key={style.id}
+                   onClick={() => {
+                     setConfig({...config, visualStyle: style.id});
+                     setIsCustomStyle(false);
+                   }}
+                   className={`p-2 border rounded flex flex-col items-center justify-center text-center transition-all h-20
+                     ${config.visualStyle === style.id && !isCustomStyle ? 'border-visu-accent bg-white/5' : 'border-white/10 hover:border-white/30'}
+                   `}
+                 >
+                    <span className="text-xl mb-1">{style.icon}</span>
+                    <span className="text-[10px] font-bold leading-tight">{style.name}</span>
+                 </button>
+              ))}
+              <button 
+                onClick={() => setIsCustomStyle(true)}
+                className={`p-2 border rounded flex flex-col items-center justify-center text-center transition-all h-20
+                  ${isCustomStyle ? 'border-visu-accent bg-white/5' : 'border-white/10 hover:border-white/30'}
+                `}
+              >
+                 <span className="text-xl mb-1">✨</span>
+                 <span className="text-[10px] font-bold leading-tight">{t.custom}</span>
+              </button>
+            </div>
+            
+            {/* Custom Style Input */}
+            {isCustomStyle && (
+              <input
+                type="text"
+                value={VISUAL_STYLES.some(s => s.id === config.visualStyle) ? '' : config.visualStyle}
+                onChange={(e) => setConfig({ ...config, visualStyle: e.target.value })}
+                placeholder={t.customStylePlaceholder}
+                className="w-full bg-visu-black border border-white/20 rounded p-3 text-white focus:outline-none transition-colors focus:border-white/50 text-sm animate-fade-in"
+              />
+            )}
           </div>
 
-          {/* Typography Selector - Only active if overlay mode really, but keep for style consistency prompts */}
+          {/* Typography Selector */}
           <div>
             <label className="block text-xs font-bold text-gray-400 uppercase mb-2">{t.typography}</label>
             <div className="grid grid-cols-2 gap-2">
@@ -195,7 +228,7 @@ export const InputSection: React.FC<InputSectionProps> = ({ config, setConfig, o
                  <button
                    key={style.id}
                    onClick={() => setConfig({...config, typography: style.id})}
-                   className={`p-3 border rounded text-left transition-all ${config.typography === style.id ? 'border-white bg-white/5' : 'border-white/10 hover:border-white/30'}`}
+                   className={`p-3 border rounded text-left transition-all ${config.typography === style.id ? 'border-white bg-white/5' : 'border-white/10 hover:border-white/30'} ${config.renderMode === 'ai-baked' ? 'opacity-50 cursor-not-allowed' : ''}`}
                  >
                     <div style={{ fontFamily: style.fontFamilyDisplay }} className="text-lg leading-none mb-1 text-white">{style.name}</div>
                     <div style={{ fontFamily: style.fontFamilyBody }} className="text-[10px] text-gray-400">Aa Bb Cc 123</div>
@@ -249,12 +282,51 @@ export const InputSection: React.FC<InputSectionProps> = ({ config, setConfig, o
               </div>
             </div>
 
-            {/* Style Reference (Optional) */}
+            {/* Logo Upload (NEW) */}
             <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">LOGO (Optional)</label>
+              <div 
+                onClick={() => logoInputRef.current?.click()}
+                className={`w-full h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group
+                  ${config.logoImage ? 'border-white/50' : 'border-white/20 hover:border-white/50'}
+                `}
+              >
+                {config.logoImage ? (
+                  <>
+                    <img 
+                      src={config.logoImage} 
+                      alt="Logo" 
+                      className="absolute inset-0 w-full h-full object-contain p-4 opacity-80 group-hover:opacity-60 transition-opacity" 
+                    />
+                     <div 
+                      className="z-10 bg-black/80 p-2 rounded text-[10px] font-bold uppercase text-center"
+                      style={{ color: config.brandColor }}
+                    >
+                      Change Logo
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center p-2">
+                    <div className="text-xl mb-1 text-gray-500">🛡️</div>
+                     <p className="text-[10px] text-gray-400 font-bold leading-tight">{t.clickUpload}</p>
+                  </div>
+                )}
+                <input 
+                  type="file" 
+                  ref={logoInputRef} 
+                  className="hidden" 
+                  accept="image/*" 
+                  onChange={(e) => handleFileChange(e, 'logoImage')}
+                />
+              </div>
+            </div>
+
+            {/* Style Reference (Optional) */}
+            <div className="col-span-2">
               <label className="block text-xs font-bold text-gray-400 uppercase mb-1">{t.refStyle}</label>
               <div 
                 onClick={() => styleInputRef.current?.click()}
-                className={`w-full h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group
+                className={`w-full h-24 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group
                   ${config.styleReferenceImage ? 'border-white/50' : 'border-white/20 hover:border-white/50'}
                 `}
               >
@@ -273,9 +345,9 @@ export const InputSection: React.FC<InputSectionProps> = ({ config, setConfig, o
                     </div>
                   </>
                 ) : (
-                  <div className="text-center p-2">
-                    <div className="text-xl mb-1 text-gray-500">🎨</div>
-                     <p className="text-[10px] text-gray-400 font-bold leading-tight">{t.clickUpload}</p>
+                  <div className="text-center p-2 flex items-center gap-2">
+                    <div className="text-xl text-gray-500">🎨</div>
+                     <p className="text-[10px] text-gray-400 font-bold leading-tight">{t.clickUpload} (Optional)</p>
                   </div>
                 )}
                 <input 

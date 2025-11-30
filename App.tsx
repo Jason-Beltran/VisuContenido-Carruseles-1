@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { UserConfig, GeneratedSlide, GenerationStep, COLOR_PALETTES, TYPOGRAPHY_STYLES, DICTIONARY } from './types';
+import { UserConfig, GeneratedSlide, GenerationStep, COLOR_PALETTES, TYPOGRAPHY_STYLES, DICTIONARY, VISUAL_STYLES } from './types';
 import { InputSection } from './components/InputSection';
 import { ResultCarousel } from './components/ResultCarousel';
 import { generateCarouselPlan, generateSlideImage } from './services/geminiService';
@@ -15,7 +16,7 @@ const App: React.FC = () => {
     referenceImage: null,
     styleReferenceImage: null,
     brandColor: COLOR_PALETTES[0].hex, // Default Yellow
-    visualStyle: 'Cinematic Motivational',
+    visualStyle: VISUAL_STYLES[0].id, // Default to Cinematic
     typography: TYPOGRAPHY_STYLES[0].id,
     showPageNumbers: false,
     language: 'es'
