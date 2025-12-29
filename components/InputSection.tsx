@@ -255,8 +255,8 @@ export const InputSection: React.FC<InputSectionProps> = ({ config, setConfig, o
               </button>
               <button 
                 onClick={() => setConfig({...config, renderMode: 'ai-baked'})}
-                className={`p-4 rounded-2xl border text-left transition-all ai-aura hover:scale-[1.02] active:scale-95
-                  ${config.renderMode === 'ai-baked' ? 'border-visu-purple bg-visu-purple/10' : 'border-white/5 bg-white/5 hover:border-white/10'}
+                className={`p-4 rounded-2xl border text-left transition-all hover:scale-[1.02] active:scale-95 ai-aura
+                  ${config.renderMode === 'ai-baked' ? 'border-visu-purple bg-visu-purple/10 shadow-magic' : 'border-white/5 bg-white/5 hover:border-white/10'}
                 `}
               >
                 <div className="text-[10px] font-bold text-visu-purple-light mb-1 uppercase tracking-widest">{t.renderBaked}</div>

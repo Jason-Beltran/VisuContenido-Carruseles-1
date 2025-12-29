@@ -30,36 +30,32 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkKey = async () => {
       try {
-        // We check for both window.aistudio AND process.env.API_KEY if it's set
+        // If a key is already selected or provided via environment, skip the gate.
         if ((window as any).aistudio && await (window as any).aistudio.hasSelectedApiKey()) {
           setHasKey(true);
         } else if (process.env.API_KEY) {
-          // If the key is already injected via environment (e.g. Netlify build vars), we can proceed
           setHasKey(true);
         }
       } catch (e) {
-        console.debug("Checking API Key failed initially, this is normal if no key is yet selected.");
+        console.debug("Initial key check failed, standard behavior if not selected.");
       }
     };
     checkKey();
   }, []);
 
   const handleSelectKey = async () => {
+    // Attempt to open the selector dialog if available
     if ((window as any).aistudio) {
-        try {
-          await (window as any).aistudio.openSelectKey();
-          // Mandatory rule: Proceed immediately after trigger to avoid race conditions
-          setHasKey(true);
-        } catch (e) {
-          console.error("Error opening API Key dialog", e);
-          setHasKey(true); 
-        }
-    } else {
-      // In non-AI Studio environments, we explain that the key must be provided via the platform's environment variables
-      setError(config.language === 'es' 
-        ? "El selector de Google AI Studio no está disponible en este entorno. Por favor, asegúrate de haber configurado tu API_KEY en las variables de entorno de tu servidor/hosting."
-        : "Google AI Studio selector is unavailable in this environment. Please ensure you have configured your API_KEY in your server/hosting environment variables.");
+      try {
+        await (window as any).aistudio.openSelectKey();
+      } catch (e) {
+        console.error("Failed to open AI Studio key selector:", e);
+      }
     }
+    
+    // To ensure users aren't stuck (especially on platforms like Netlify where aistudio might not be injected),
+    // we proceed to the app. If no key is set, subsequent API calls will trigger the retry flow.
+    setHasKey(true);
   };
 
   const handleGenerate = async () => {
@@ -80,9 +76,13 @@ const App: React.FC = () => {
           setSlides(prev => prev.map(s => s.id === initialSlides[i].id ? { ...s, status: 'completed', imageUrl } : s));
         } catch (err: any) {
            setSlides(prev => prev.map(s => s.id === initialSlides[i].id ? { ...s, status: 'error', error: err.message || "Failed" } : s));
-           if (err.message && err.message.includes("Requested entity was not found")) {
+           
+           // If the key is invalid or missing, reset and show the gate again.
+           if (err.message && (err.message.includes("Requested entity was not found") || err.message.includes("API_KEY"))) {
              setHasKey(false);
-             setError(config.language === 'es' ? "Error de API. Asegúrate de usar una Key válida con facturación activa." : "API Error. Ensure you are using a valid Key with active billing.");
+             setError(config.language === 'es' 
+               ? "Error de acceso: API Key no configurada o inválida. Por favor, conéctala de nuevo." 
+               : "Access Error: API Key not configured or invalid. Please reconnect.");
              return; 
            }
         }
@@ -193,8 +193,8 @@ const App: React.FC = () => {
                <p className="text-gray-400 mb-6 text-sm leading-relaxed">
                  Esta aplicación utiliza <strong>Gemini 3 Pro</strong> para generar imágenes cinematográficas. 
                  {config.language === 'es' 
-                   ? " Para activarlo, usa el botón de abajo para autorizar tu Key. Si estás en Netlify, asegúrate de haber configurado tu API_KEY en el panel de control."
-                   : " To enable it, use the button below to authorize your Key. If on Netlify, ensure your API_KEY is set in the dashboard."}
+                   ? " Para activarlo, usa el botón de abajo para autorizar tu Key. Si estás en Netlify y el botón no abre una ventana, asegúrate de configurar tu API_KEY en las variables de entorno de tu sitio."
+                   : " To enable it, use the button below to authorize your Key. If on Netlify and the button doesn't open a window, ensure your API_KEY is set in your site's environment variables."}
                </p>
                
                <div className="space-y-4 mb-8">
@@ -204,11 +204,11 @@ const App: React.FC = () => {
                  </div>
                  <div className="flex gap-4">
                    <div className="text-visu-purple font-mono text-lg">02.</div>
-                   <p className="text-xs text-gray-300">Haz clic en el botón mágico de abajo.</p>
+                   <p className="text-xs text-gray-300">Haz clic en el botón de abajo para verificar y entrar.</p>
                  </div>
                  <div className="flex gap-4">
                    <div className="text-visu-purple font-mono text-lg">03.</div>
-                   <p className="text-xs text-gray-300">Si no se abre nada, verifica que no tengas un bloqueador de ventanas emergentes activo.</p>
+                   <p className="text-xs text-gray-300">Si el selector no aparece, procederemos directamente a la app confiando en tu configuración de entorno.</p>
                  </div>
                </div>
 
