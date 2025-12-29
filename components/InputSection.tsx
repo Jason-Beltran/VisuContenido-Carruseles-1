@@ -246,8 +246,8 @@ export const InputSection: React.FC<InputSectionProps> = ({ config, setConfig, o
             <div className="grid grid-cols-2 gap-3">
               <button 
                 onClick={() => setConfig({...config, renderMode: 'overlay'})}
-                className={`p-4 rounded-2xl border text-left transition-all
-                  ${config.renderMode === 'overlay' ? 'border-white bg-white/10' : 'border-white/5 bg-white/5 hover:border-white/10'}
+                className={`p-4 rounded-2xl border text-left transition-all hover:scale-[1.02] active:scale-95
+                  ${config.renderMode === 'overlay' ? 'border-white bg-white/10 shadow-aura' : 'border-white/5 bg-white/5 hover:border-white/10'}
                 `}
               >
                 <div className="text-[10px] font-bold text-white mb-1 uppercase tracking-widest">{t.renderOverlay}</div>
@@ -255,7 +255,7 @@ export const InputSection: React.FC<InputSectionProps> = ({ config, setConfig, o
               </button>
               <button 
                 onClick={() => setConfig({...config, renderMode: 'ai-baked'})}
-                className={`p-4 rounded-2xl border text-left transition-all
+                className={`p-4 rounded-2xl border text-left transition-all ai-aura hover:scale-[1.02] active:scale-95
                   ${config.renderMode === 'ai-baked' ? 'border-visu-purple bg-visu-purple/10' : 'border-white/5 bg-white/5 hover:border-white/10'}
                 `}
               >
@@ -284,12 +284,12 @@ export const InputSection: React.FC<InputSectionProps> = ({ config, setConfig, o
         <button
           onClick={onGenerate}
           disabled={!isReady || isGenerating}
-          className={`w-full py-6 text-sm font-bold uppercase tracking-[0.4em] rounded-3xl transition-all shadow-premium
+          className={`shimmer-btn w-full py-6 text-sm font-bold uppercase tracking-[0.4em] rounded-3xl transition-all shadow-premium border border-white/10
             ${!isReady 
-              ? 'bg-white/5 text-gray-700 cursor-not-allowed border border-white/5' 
+              ? 'bg-white/5 text-gray-700 cursor-not-allowed border border-white/5 opacity-50' 
               : isGenerating
                 ? 'bg-white/10 text-white animate-pulse'
-                : 'text-white hover:brightness-110 hover:scale-[1.01] active:scale-[0.98]'
+                : 'text-white hover:brightness-110 hover:scale-[1.01] active:scale-[0.98] shadow-aura hover:shadow-aura-hover'
             }
           `}
           style={{ 

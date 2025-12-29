@@ -29,8 +29,12 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const checkKey = async () => {
-      if ((window as any).aistudio && await (window as any).aistudio.hasSelectedApiKey()) {
-        setHasKey(true);
+      try {
+        if ((window as any).aistudio && await (window as any).aistudio.hasSelectedApiKey()) {
+          setHasKey(true);
+        }
+      } catch (e) {
+        console.debug("Checking API Key failed initially, this is expected if no key is yet selected.");
       }
     };
     checkKey();
@@ -38,8 +42,17 @@ const App: React.FC = () => {
 
   const handleSelectKey = async () => {
     if ((window as any).aistudio) {
-        await (window as any).aistudio.openSelectKey();
-        setHasKey(true);
+        try {
+          await (window as any).aistudio.openSelectKey();
+          // Mandatory rule: Proceed immediately after trigger
+          setHasKey(true);
+        } catch (e) {
+          console.error("Error opening API Key dialog", e);
+          // If it fails, we still assume true to unblock the UI and let the provider handle it
+          setHasKey(true);
+        }
+    } else {
+      setError("AI Studio Interface not found. Please ensure you are running in a compatible environment.");
     }
   };
 
@@ -178,7 +191,7 @@ const App: React.FC = () => {
                <div className="space-y-4 mb-8">
                  <div className="flex gap-4">
                    <div className="text-visu-purple font-mono text-lg">01.</div>
-                   <p className="text-xs text-gray-300">Ve a <a href="https://ai.google.dev/" target="_blank" className="underline text-visu-purple">Google AI Studio</a> y crea una Key gratuita o de pago.</p>
+                   <p className="text-xs text-gray-300">Ve a <a href="https://ai.google.dev/" target="_blank" className="underline text-visu-purple hover:text-visu-purple-light transition-colors">Google AI Studio</a> y crea una Key gratuita o de pago.</p>
                  </div>
                  <div className="flex gap-4">
                    <div className="text-visu-purple font-mono text-lg">02.</div>
@@ -192,7 +205,7 @@ const App: React.FC = () => {
 
                <button 
                  onClick={handleSelectKey} 
-                 className="w-full bg-visu-purple text-white hover:bg-visu-purple-light px-8 py-5 rounded-3xl font-bold uppercase tracking-wider transition-all shadow-xl hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3"
+                 className="shimmer-btn w-full bg-visu-purple text-white hover:bg-visu-purple-light px-8 py-5 rounded-3xl font-bold uppercase tracking-wider transition-all shadow-aura hover:shadow-aura-hover hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3 border border-white/10"
                >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z" />
