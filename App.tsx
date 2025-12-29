@@ -30,11 +30,15 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkKey = async () => {
       try {
+        // We check for both window.aistudio AND process.env.API_KEY if it's set
         if ((window as any).aistudio && await (window as any).aistudio.hasSelectedApiKey()) {
+          setHasKey(true);
+        } else if (process.env.API_KEY) {
+          // If the key is already injected via environment (e.g. Netlify build vars), we can proceed
           setHasKey(true);
         }
       } catch (e) {
-        console.debug("Checking API Key failed initially, this is expected if no key is yet selected.");
+        console.debug("Checking API Key failed initially, this is normal if no key is yet selected.");
       }
     };
     checkKey();
@@ -44,15 +48,17 @@ const App: React.FC = () => {
     if ((window as any).aistudio) {
         try {
           await (window as any).aistudio.openSelectKey();
-          // Mandatory rule: Proceed immediately after trigger
+          // Mandatory rule: Proceed immediately after trigger to avoid race conditions
           setHasKey(true);
         } catch (e) {
           console.error("Error opening API Key dialog", e);
-          // If it fails, we still assume true to unblock the UI and let the provider handle it
-          setHasKey(true);
+          setHasKey(true); 
         }
     } else {
-      setError("AI Studio Interface not found. Please ensure you are running in a compatible environment.");
+      // In non-AI Studio environments, we explain that the key must be provided via the platform's environment variables
+      setError(config.language === 'es' 
+        ? "El selector de Google AI Studio no está disponible en este entorno. Por favor, asegúrate de haber configurado tu API_KEY en las variables de entorno de tu servidor/hosting."
+        : "Google AI Studio selector is unavailable in this environment. Please ensure you have configured your API_KEY in your server/hosting environment variables.");
     }
   };
 
@@ -76,7 +82,7 @@ const App: React.FC = () => {
            setSlides(prev => prev.map(s => s.id === initialSlides[i].id ? { ...s, status: 'error', error: err.message || "Failed" } : s));
            if (err.message && err.message.includes("Requested entity was not found")) {
              setHasKey(false);
-             setError("Sesión expirada. Conecta de nuevo tu Key.");
+             setError(config.language === 'es' ? "Error de API. Asegúrate de usar una Key válida con facturación activa." : "API Error. Ensure you are using a valid Key with active billing.");
              return; 
            }
         }
@@ -171,7 +177,7 @@ const App: React.FC = () => {
   if (!hasKey) {
      return (
         <div className="min-h-screen bg-visu-black text-white flex flex-col items-center justify-center p-6 text-center">
-             <div className="mb-12 relative">
+             <div className="mb-12 relative magic-glow">
                 <div className="absolute -inset-10 bg-visu-purple/20 blur-3xl rounded-full float-anim"></div>
                 <h1 className="text-5xl md:text-8xl font-display font-bold uppercase tracking-tighter relative">
                    Visu<span className="text-visu-purple">Creator</span>
@@ -181,25 +187,28 @@ const App: React.FC = () => {
 
              <div className="max-w-xl glass-card rounded-4xl p-8 mb-8 text-left shadow-premium border-visu-purple/20">
                <h2 className="text-2xl font-bold mb-4 flex items-center gap-3">
-                 <span className="w-8 h-8 rounded-full bg-visu-purple flex items-center justify-center text-sm">1</span>
+                 <span className="w-8 h-8 rounded-full bg-visu-purple flex items-center justify-center text-sm shadow-aura">1</span>
                  Conecta tu Cerebro IA
                </h2>
                <p className="text-gray-400 mb-6 text-sm leading-relaxed">
-                 Esta aplicación utiliza <strong>Gemini 3 Pro</strong> para generar imágenes de nivel cinematográfico. Para que funcione, necesitas usar tu propia API Key de Google.
+                 Esta aplicación utiliza <strong>Gemini 3 Pro</strong> para generar imágenes cinematográficas. 
+                 {config.language === 'es' 
+                   ? " Para activarlo, usa el botón de abajo para autorizar tu Key. Si estás en Netlify, asegúrate de haber configurado tu API_KEY en el panel de control."
+                   : " To enable it, use the button below to authorize your Key. If on Netlify, ensure your API_KEY is set in the dashboard."}
                </p>
                
                <div className="space-y-4 mb-8">
                  <div className="flex gap-4">
                    <div className="text-visu-purple font-mono text-lg">01.</div>
-                   <p className="text-xs text-gray-300">Ve a <a href="https://ai.google.dev/" target="_blank" className="underline text-visu-purple hover:text-visu-purple-light transition-colors">Google AI Studio</a> y crea una Key gratuita o de pago.</p>
+                   <p className="text-xs text-gray-300">Ve a <a href="https://ai.google.dev/" target="_blank" className="underline text-visu-purple hover:text-visu-purple-light transition-colors">Google AI Studio</a> y obtén tu Key.</p>
                  </div>
                  <div className="flex gap-4">
                    <div className="text-visu-purple font-mono text-lg">02.</div>
-                   <p className="text-xs text-gray-300">Asegúrate de tener un proyecto en Google Cloud habilitado.</p>
+                   <p className="text-xs text-gray-300">Haz clic en el botón mágico de abajo.</p>
                  </div>
                  <div className="flex gap-4">
                    <div className="text-visu-purple font-mono text-lg">03.</div>
-                   <p className="text-xs text-gray-300">Haz clic en el botón de abajo y selecciona tu Key en la ventana emergente.</p>
+                   <p className="text-xs text-gray-300">Si no se abre nada, verifica que no tengas un bloqueador de ventanas emergentes activo.</p>
                  </div>
                </div>
 
@@ -210,7 +219,7 @@ const App: React.FC = () => {
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z" />
                   </svg>
-                  Conectar Key de AI Studio
+                  {t.connectBtn}
                </button>
              </div>
 
@@ -225,7 +234,7 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-visu-black p-4 md:p-8 font-sans selection:bg-visu-purple selection:text-white">
       <div className="max-w-6xl mx-auto">
         <header className="mb-12 border-b border-white/5 pb-8 flex flex-col md:flex-row justify-between md:items-end gap-6">
-          <div className="relative">
+          <div className="relative magic-glow">
             <h1 className="text-4xl md:text-6xl font-display font-bold text-white uppercase tracking-tighter">
               Visu<span style={{ color: config.brandColor }}>Creator</span>
             </h1>
@@ -236,7 +245,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-4">
              <div className="hidden sm:flex flex-col items-end mr-2">
                 <span className="text-[9px] uppercase font-bold text-gray-500 mb-1">Status</span>
-                <span className="text-[10px] font-bold uppercase py-1 px-3 rounded-full bg-green-500/10 border border-green-500/30 text-green-400">
+                <span className="text-[10px] font-bold uppercase py-1 px-3 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 ai-aura">
                   AI Active
                 </span>
              </div>
@@ -250,9 +259,9 @@ const App: React.FC = () => {
         </header>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-3xl mb-8 font-medium backdrop-blur-md animate-fade-in flex items-center gap-3">
-             <div className="w-2 h-2 rounded-full bg-red-500"></div>
-             {t.error}: {error}
+          <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-6 rounded-3xl mb-8 font-medium backdrop-blur-md animate-fade-in flex items-center gap-3 shadow-magic">
+             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+             <div className="text-sm">{error}</div>
           </div>
         )}
 
@@ -265,7 +274,7 @@ const App: React.FC = () => {
 
         {step === GenerationStep.PLANNING && (
            <div className="text-center py-20 flex flex-col items-center">
-              <div className="w-12 h-12 border-2 border-t-transparent rounded-full animate-spin mb-6" style={{ borderColor: config.brandColor, borderTopColor: 'transparent' }}></div>
+              <div className="w-16 h-16 border-4 border-t-transparent rounded-full animate-spin mb-6 shadow-aura" style={{ borderColor: config.brandColor, borderTopColor: 'transparent' }}></div>
               <div className="text-sm font-bold font-display uppercase tracking-[0.3em] animate-pulse" style={{ color: config.brandColor }}>
                 {t.stepPlanning}
               </div>

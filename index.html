@@ -41,6 +41,7 @@
               'premium': '0 25px 50px -12px rgba(124, 58, 237, 0.25)',
               'aura': '0 0 20px 2px rgba(124, 58, 237, 0.4)',
               'aura-hover': '0 0 30px 5px rgba(124, 58, 237, 0.6)',
+              'magic': '0 0 40px -5px rgba(168, 85, 247, 0.5)',
             }
           }
         }
@@ -87,6 +88,11 @@
         100% { left: 100%; }
       }
 
+      @keyframes glow-rotate {
+        0% { filter: hue-rotate(0deg); }
+        100% { filter: hue-rotate(360deg); }
+      }
+
       .float-anim {
         animation: float 6s ease-in-out infinite;
       }
@@ -106,16 +112,20 @@
         background: linear-gradient(
           90deg,
           transparent,
-          rgba(255, 255, 255, 0.2),
+          rgba(255, 255, 255, 0.3),
           transparent
         );
         transition: 0.5s;
-        animation: slide-shimmer 3s infinite;
+        animation: slide-shimmer 3s infinite linear;
       }
 
       .ai-aura {
         animation: aura-pulse 2s infinite;
-        border: 1px solid rgba(168, 85, 247, 0.3);
+        border: 1px solid rgba(168, 85, 247, 0.4);
+      }
+
+      .magic-glow {
+        animation: glow-rotate 10s infinite linear;
       }
 
       /* Custom Scrollbar */
