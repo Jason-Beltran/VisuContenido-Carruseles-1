@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VisuCreator | TikTok Carousel Generator</title>
+    <title>VisuCreator | VisuContenido</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Oswald:wght@500;700&family=Playfair+Display:wght@700&family=Lato:wght@400&family=Orbitron:wght@700&family=Roboto+Mono:wght@400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Oswald:wght@500;700&family=Playfair+Display:wght@700&family=Lato:wght@400&family=Orbitron:wght@700&family=Roboto+Mono:wght@400&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
@@ -21,12 +21,24 @@
             },
             colors: {
               visu: {
-                black: '#0a0a0a',
-                dark: '#121212',
-                gray: '#1e1e1e',
-                accent: '#FACC15', // Yellow-400
-                text: '#ffffff'
+                black: '#050505',
+                dark: '#0f0f0f',
+                gray: '#161618',
+                accent: '#7C3AED', // Primary Purple
+                purple: {
+                  light: '#A855F7',
+                  DEFAULT: '#7C3AED',
+                  dark: '#5B21B6'
+                }
               }
+            },
+            borderRadius: {
+              '3xl': '1.5rem',
+              '4xl': '2rem',
+            },
+            boxShadow: {
+              'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+              'premium': '0 25px 50px -12px rgba(124, 58, 237, 0.25)',
             }
           }
         }
@@ -34,23 +46,43 @@
     </script>
     <style>
       body {
-        background-color: #0a0a0a;
+        background-color: #050505;
         color: #ffffff;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      .glass-card {
+        background: rgba(22, 22, 24, 0.7);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .apple-blur {
+        backdrop-filter: saturate(180%) blur(20px);
+        -webkit-backdrop-filter: saturate(180%) blur(20px);
       }
       /* Custom Scrollbar */
       ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: #121212; 
+        background: #050505; 
       }
       ::-webkit-scrollbar-thumb {
-        background: #333; 
-        border-radius: 4px;
+        background: #2a2a2a; 
+        border-radius: 10px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #FACC15; 
+        background: #7C3AED; 
+      }
+      @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
+      }
+      .float-anim {
+        animation: float 6s ease-in-out infinite;
       }
     </style>
   <script type="importmap">

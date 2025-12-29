@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from 'react';
 import { UserConfig, COLOR_PALETTES, TYPOGRAPHY_STYLES, DICTIONARY, VISUAL_STYLES } from '../types';
 import { improveScriptWithAI } from '../services/geminiService';
@@ -18,6 +17,7 @@ export const InputSection: React.FC<InputSectionProps> = ({ config, setConfig, o
   const [isCustomStyle, setIsCustomStyle] = useState(!VISUAL_STYLES.some(s => s.id === config.visualStyle));
 
   const t = DICTIONARY[config.language];
+  const selectedStyleObj = VISUAL_STYLES.find(s => s.id === config.visualStyle);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'referenceImage' | 'styleReferenceImage' | 'logoImage') => {
     const file = e.target.files?.[0];
@@ -38,391 +38,263 @@ export const InputSection: React.FC<InputSectionProps> = ({ config, setConfig, o
       setConfig(prev => ({ ...prev, customScript: improved }));
     } catch (e) {
       console.error(e);
-      alert("Could not improve script. Please try again.");
     } finally {
       setIsImproving(false);
     }
   };
 
-  // Ready if profession is set AND either topic or script is present. Reference image is now optional.
   const isReady = config.profession && (config.mode === 'topic' ? config.topic.length > 0 : config.customScript.length > 0);
 
   return (
-    <div className="bg-visu-gray border border-white/10 rounded-xl p-6 mb-8 shadow-2xl relative">
-      
-      {/* Language Toggle */}
-      <div className="absolute top-6 right-6 flex gap-2 z-10">
-         <button 
-           onClick={() => setConfig({...config, language: 'en'})}
-           className={`text-xs font-bold px-2 py-1 rounded ${config.language === 'en' ? 'bg-white text-black' : 'text-gray-500'}`}
-         >
-           EN
-         </button>
-         <button 
-           onClick={() => setConfig({...config, language: 'es'})}
-           className={`text-xs font-bold px-2 py-1 rounded ${config.language === 'es' ? 'bg-white text-black' : 'text-gray-500'}`}
-         >
-           ES
-         </button>
-      </div>
+    <div className="glass-card rounded-4xl p-6 sm:p-10 mb-8 shadow-glass relative overflow-hidden group">
+      {/* Decorative Brand Accent Gradient */}
+      <div 
+        className="absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-10 blur-[80px] pointer-events-none transition-all duration-700"
+        style={{ backgroundColor: config.brandColor }}
+      ></div>
 
-      <h2 className="text-xl font-display font-bold text-white mb-6 tracking-wide flex items-center">
+      <h2 className="text-xl font-display font-bold text-white mb-8 tracking-widest flex items-center uppercase">
         <span 
-          className="w-2 h-8 mr-3 transition-colors duration-300" 
-          style={{ backgroundColor: config.brandColor }}
+          className="w-1.5 h-6 mr-4 transition-all duration-500 rounded-full" 
+          style={{ backgroundColor: config.brandColor, boxShadow: `0 0 15px ${config.brandColor}` }}
         ></span>
         {t.configTitle}
       </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Left Col: Content Strategy */}
-        <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        {/* Left Col: Strategy */}
+        <div className="space-y-8">
           
-          {/* Profession */}
           <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">{t.profession}</label>
+            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">{t.profession}</label>
             <input
               type="text"
               value={config.profession}
               onChange={(e) => setConfig({ ...config, profession: e.target.value })}
-              placeholder="e.g. Filmmaker, Neuroscientist, Chef"
-              className="w-full bg-visu-black border border-white/20 rounded p-3 text-white focus:outline-none transition-colors focus:border-white/50"
+              placeholder="Ej. Filmmaker, Mentor, Coach"
+              className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-white focus:outline-none transition-all focus:bg-white/10 focus:border-white/20 text-sm font-medium"
             />
           </div>
 
-          {/* Mode Switcher */}
-          <div className="bg-visu-black p-1 rounded-lg flex space-x-1 border border-white/10">
+          <div className="bg-white/5 p-1 rounded-2xl flex space-x-1 border border-white/5">
             <button 
               onClick={() => setConfig({ ...config, mode: 'topic' })}
-              className={`flex-1 py-2 text-sm font-bold uppercase tracking-wider rounded transition-all
-                ${config.mode === 'topic' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-white'}
+              className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-[0.2em] rounded-xl transition-all
+                ${config.mode === 'topic' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}
               `}
             >
               {t.modeTopic}
             </button>
             <button 
               onClick={() => setConfig({ ...config, mode: 'custom' })}
-              className={`flex-1 py-2 text-sm font-bold uppercase tracking-wider rounded transition-all
-                ${config.mode === 'custom' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-white'}
+              className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-[0.2em] rounded-xl transition-all
+                ${config.mode === 'custom' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}
               `}
             >
               {t.modeCustom}
             </button>
           </div>
 
-          {/* Dynamic Input based on Mode */}
           {config.mode === 'topic' ? (
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">{t.topicLabel}</label>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">{t.topicLabel}</label>
               <input
                 type="text"
                 value={config.topic}
                 onChange={(e) => setConfig({ ...config, topic: e.target.value })}
-                placeholder="e.g. How to structure a viral video"
-                className="w-full bg-visu-black border border-white/20 rounded p-3 text-white focus:outline-none transition-colors focus:border-white/50"
+                placeholder="Ej. Errores al grabar con celular"
+                className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-white focus:outline-none transition-all focus:bg-white/10 focus:border-white/20 text-sm font-medium"
               />
             </div>
           ) : (
             <div>
-               <label className="block text-xs font-bold text-gray-400 uppercase mb-1 flex justify-between items-center">
+               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 flex justify-between">
                  <span>{t.scriptLabel}</span>
-                 <span className="text-[10px] text-gray-500 hidden sm:inline">{t.scriptHint}</span>
+                 <span className="opacity-40">{t.scriptHint}</span>
                </label>
                <textarea
                  value={config.customScript}
                  onChange={(e) => setConfig({ ...config, customScript: e.target.value })}
-                 placeholder="Scene 1: Me holding a camera... &#10;Scene 2: Showing a laptop screen..."
-                 className="w-full h-32 bg-visu-black border border-white/20 rounded p-3 text-white focus:outline-none transition-colors focus:border-white/50 text-sm font-mono"
+                 placeholder="Escribe tu guion escena por escena..."
+                 className="w-full h-32 bg-white/5 border border-white/5 rounded-2xl p-4 text-white focus:outline-none transition-all focus:bg-white/10 focus:border-white/20 text-sm font-medium resize-none"
                />
                <button
                  onClick={handleImproveScript}
                  disabled={isImproving || !config.customScript}
-                 className="mt-2 w-full py-2 bg-gradient-to-r from-purple-900 to-blue-900 border border-white/10 rounded text-xs font-bold uppercase tracking-wider hover:from-purple-800 hover:to-blue-800 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                 className="mt-3 w-full py-3 bg-visu-purple/10 border border-visu-purple/20 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-visu-purple/20 transition-all text-visu-purple-light flex items-center justify-center gap-2"
                >
                  {isImproving ? t.optimizing : t.improveBtn}
                </button>
             </div>
           )}
 
-          <div className="h-px bg-white/10 my-4"></div>
-
-          {/* Render Mode Toggle (New Feature) */}
           <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">{t.renderModeLabel}</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button 
-                onClick={() => setConfig({...config, renderMode: 'overlay'})}
-                className={`p-3 rounded border text-left transition-all relative overflow-hidden
-                  ${config.renderMode === 'overlay' ? 'border-white bg-white/5' : 'border-white/10 hover:border-white/30'}
-                `}
-              >
-                <div className="text-sm font-bold text-white mb-1">{t.renderOverlay}</div>
-                <div className="text-[10px] text-gray-400">Basic: Image + CSS Text Overlay</div>
-                {config.renderMode === 'overlay' && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-green-400"></div>}
-              </button>
-
-              <button 
-                onClick={() => setConfig({...config, renderMode: 'ai-baked'})}
-                className={`p-3 rounded border text-left transition-all relative overflow-hidden
-                  ${config.renderMode === 'ai-baked' ? 'border-purple-400 bg-purple-900/20' : 'border-white/10 hover:border-white/30'}
-                `}
-              >
-                <div className="text-sm font-bold text-purple-300 mb-1 flex items-center gap-2">
-                  {t.renderBaked}
-                  <span className="text-[8px] bg-purple-500 text-black px-1 rounded font-bold">PRO</span>
-                </div>
-                <div className="text-[10px] text-gray-400">PRO: Full Image + Integrated Text</div>
-                {config.renderMode === 'ai-baked' && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-purple-400"></div>}
-              </button>
-            </div>
-          </div>
-
-
-          {/* Visual Style Selector */}
-          <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">{t.visualStyle}</label>
-            <div className="grid grid-cols-3 gap-2 mb-3">
+            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">{t.visualStyle}</label>
+            <div className="grid grid-cols-5 gap-3 mb-4">
               {VISUAL_STYLES.map(style => (
                  <button 
                    key={style.id}
-                   onClick={() => {
-                     setConfig({...config, visualStyle: style.id});
-                     setIsCustomStyle(false);
-                   }}
-                   className={`p-2 border rounded flex flex-col items-center justify-center text-center transition-all h-20
-                     ${config.visualStyle === style.id && !isCustomStyle ? 'border-visu-accent bg-white/5' : 'border-white/10 hover:border-white/30'}
+                   onClick={() => { setConfig({...config, visualStyle: style.id}); setIsCustomStyle(false); }}
+                   className={`p-3 border rounded-2xl flex flex-col items-center justify-center transition-all aspect-square
+                     ${config.visualStyle === style.id && !isCustomStyle ? 'border-visu-purple bg-visu-purple/10 scale-105 shadow-lg shadow-visu-purple/20' : 'border-white/5 bg-white/5 hover:border-white/20'}
                    `}
                  >
                     <span className="text-xl mb-1">{style.icon}</span>
-                    <span className="text-[10px] font-bold leading-tight">{style.name}</span>
+                    <span className="text-[7px] font-bold uppercase tracking-tighter opacity-80 text-center">{style.name[config.language]}</span>
                  </button>
               ))}
               <button 
                 onClick={() => setIsCustomStyle(true)}
-                className={`p-2 border rounded flex flex-col items-center justify-center text-center transition-all h-20
-                  ${isCustomStyle ? 'border-visu-accent bg-white/5' : 'border-white/10 hover:border-white/30'}
+                className={`p-3 border rounded-2xl flex flex-col items-center justify-center transition-all aspect-square
+                  ${isCustomStyle ? 'border-visu-purple bg-visu-purple/10' : 'border-white/5 bg-white/5 hover:border-white/20'}
                 `}
               >
                  <span className="text-xl mb-1">✨</span>
-                 <span className="text-[10px] font-bold leading-tight">{t.custom}</span>
+                 <span className="text-[7px] font-bold uppercase tracking-tighter">{t.custom}</span>
               </button>
             </div>
             
-            {/* Custom Style Input */}
-            {isCustomStyle && (
-              <input
-                type="text"
-                value={VISUAL_STYLES.some(s => s.id === config.visualStyle) ? '' : config.visualStyle}
-                onChange={(e) => setConfig({ ...config, visualStyle: e.target.value })}
-                placeholder={t.customStylePlaceholder}
-                className="w-full bg-visu-black border border-white/20 rounded p-3 text-white focus:outline-none transition-colors focus:border-white/50 text-sm animate-fade-in"
-              />
-            )}
-          </div>
-
-          {/* Typography Selector */}
-          <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">{t.typography}</label>
-            <div className="grid grid-cols-2 gap-2">
-              {TYPOGRAPHY_STYLES.map(style => (
-                 <button
-                   key={style.id}
-                   onClick={() => setConfig({...config, typography: style.id})}
-                   className={`p-3 border rounded text-left transition-all ${config.typography === style.id ? 'border-white bg-white/5' : 'border-white/10 hover:border-white/30'} ${config.renderMode === 'ai-baked' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                 >
-                    <div style={{ fontFamily: style.fontFamilyDisplay }} className="text-lg leading-none mb-1 text-white">{style.name}</div>
-                    <div style={{ fontFamily: style.fontFamilyBody }} className="text-[10px] text-gray-400">Aa Bb Cc 123</div>
-                 </button>
-              ))}
+            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-xs text-gray-400 min-h-[60px] flex items-center">
+              {isCustomStyle ? (
+                <input
+                  type="text"
+                  value={VISUAL_STYLES.some(s => s.id === config.visualStyle) ? '' : config.visualStyle}
+                  onChange={(e) => setConfig({ ...config, visualStyle: e.target.value })}
+                  placeholder={t.customStylePlaceholder}
+                  className="w-full bg-transparent border-none text-white focus:outline-none p-0"
+                />
+              ) : (
+                <div className="leading-relaxed opacity-80 italic">"{selectedStyleObj?.description[config.language]}"</div>
+              )}
             </div>
           </div>
-
         </div>
 
-        {/* Right Col: Branding & Visuals */}
-        <div className="space-y-6">
+        {/* Right Col: Visuals & Brand */}
+        <div className="space-y-8">
           
           <div className="grid grid-cols-2 gap-4">
-             {/* Reference Image (Person) */}
              <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">{t.refPerson} (Optional)</label>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">{t.refPerson}</label>
               <div 
                 onClick={() => fileInputRef.current?.click()}
-                className={`w-full h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group
-                  ${config.referenceImage ? 'border-white/50' : 'border-white/20 hover:border-white/50'}
+                className={`w-full h-40 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group
+                  ${config.referenceImage ? 'border-white/30' : 'border-white/10 hover:border-white/20 bg-white/5'}
                 `}
               >
                 {config.referenceImage ? (
                   <>
-                    <img 
-                      src={config.referenceImage} 
-                      alt="Reference" 
-                      className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" 
-                    />
-                    <div 
-                      className="z-10 bg-black/80 p-2 rounded text-[10px] font-bold uppercase text-center"
-                      style={{ color: config.brandColor }}
-                    >
-                      {t.changePhoto}
-                    </div>
+                    <img src={config.referenceImage} alt="Ref" className="absolute inset-0 w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[10px] font-bold uppercase">{t.changePhoto}</div>
                   </>
                 ) : (
-                  <div className="text-center p-2">
-                    <div className="text-xl mb-1 text-gray-500">👤</div>
-                    <p className="text-[10px] text-gray-400 font-bold leading-tight">{t.clickUpload}</p>
+                  <div className="text-center opacity-40 group-hover:opacity-60 transition-opacity">
+                    <div className="text-2xl mb-1">📸</div>
+                    <p className="text-[8px] font-bold tracking-widest">{t.clickUpload}</p>
                   </div>
                 )}
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  className="hidden" 
-                  accept="image/*" 
-                  onChange={(e) => handleFileChange(e, 'referenceImage')}
-                />
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, 'referenceImage')} />
               </div>
             </div>
 
-            {/* Logo Upload (NEW) */}
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">LOGO (Optional)</label>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Brand Logo</label>
               <div 
                 onClick={() => logoInputRef.current?.click()}
-                className={`w-full h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group
-                  ${config.logoImage ? 'border-white/50' : 'border-white/20 hover:border-white/50'}
+                className={`w-full h-40 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group
+                  ${config.logoImage ? 'border-white/30' : 'border-white/10 hover:border-white/20 bg-white/5'}
                 `}
               >
                 {config.logoImage ? (
                   <>
-                    <img 
-                      src={config.logoImage} 
-                      alt="Logo" 
-                      className="absolute inset-0 w-full h-full object-contain p-4 opacity-80 group-hover:opacity-60 transition-opacity" 
-                    />
-                     <div 
-                      className="z-10 bg-black/80 p-2 rounded text-[10px] font-bold uppercase text-center"
-                      style={{ color: config.brandColor }}
-                    >
-                      Change Logo
-                    </div>
+                    <img src={config.logoImage} alt="Logo" className="absolute inset-0 w-full h-full object-contain p-6" />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[10px] font-bold uppercase">Change</div>
                   </>
                 ) : (
-                  <div className="text-center p-2">
-                    <div className="text-xl mb-1 text-gray-500">🛡️</div>
-                     <p className="text-[10px] text-gray-400 font-bold leading-tight">{t.clickUpload}</p>
+                  <div className="text-center opacity-40 group-hover:opacity-60 transition-opacity">
+                    <div className="text-2xl mb-1">🏷️</div>
+                     <p className="text-[8px] font-bold tracking-widest">{t.clickUpload}</p>
                   </div>
                 )}
-                <input 
-                  type="file" 
-                  ref={logoInputRef} 
-                  className="hidden" 
-                  accept="image/*" 
-                  onChange={(e) => handleFileChange(e, 'logoImage')}
-                />
-              </div>
-            </div>
-
-            {/* Style Reference (Optional) */}
-            <div className="col-span-2">
-              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">{t.refStyle}</label>
-              <div 
-                onClick={() => styleInputRef.current?.click()}
-                className={`w-full h-24 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group
-                  ${config.styleReferenceImage ? 'border-white/50' : 'border-white/20 hover:border-white/50'}
-                `}
-              >
-                {config.styleReferenceImage ? (
-                  <>
-                    <img 
-                      src={config.styleReferenceImage} 
-                      alt="Style Ref" 
-                      className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" 
-                    />
-                     <div 
-                      className="z-10 bg-black/80 p-2 rounded text-[10px] font-bold uppercase text-center"
-                      style={{ color: config.brandColor }}
-                    >
-                      {t.changePhoto}
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center p-2 flex items-center gap-2">
-                    <div className="text-xl text-gray-500">🎨</div>
-                     <p className="text-[10px] text-gray-400 font-bold leading-tight">{t.clickUpload} (Optional)</p>
-                  </div>
-                )}
-                <input 
-                  type="file" 
-                  ref={styleInputRef} 
-                  className="hidden" 
-                  accept="image/*" 
-                  onChange={(e) => handleFileChange(e, 'styleReferenceImage')}
-                />
+                <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, 'logoImage')} />
               </div>
             </div>
           </div>
 
-          {/* Color Palette */}
           <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">{t.brandColor}</label>
-            <div className="grid grid-cols-4 gap-2 mb-3">
+            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">{t.brandColor}</label>
+            <div className="flex flex-wrap gap-3">
               {COLOR_PALETTES.map((palette) => (
                 <button
                   key={palette.hex}
                   onClick={() => setConfig({ ...config, brandColor: palette.hex })}
-                  className={`h-8 rounded flex items-center justify-center transition-all border
-                    ${config.brandColor === palette.hex ? 'border-white scale-110 ring-2 ring-white/20' : 'border-transparent hover:scale-105'}
+                  className={`w-8 h-8 rounded-full transition-all border-2
+                    ${config.brandColor === palette.hex ? 'border-white scale-110 shadow-lg' : 'border-transparent hover:scale-110'}
                   `}
-                  style={{ backgroundColor: palette.hex }}
-                  title={palette.name}
-                >
-                  {config.brandColor === palette.hex && <span className="text-black text-[10px]">✓</span>}
-                </button>
+                  style={{ backgroundColor: palette.hex, boxShadow: config.brandColor === palette.hex ? `0 0 15px ${palette.hex}80` : '' }}
+                />
               ))}
-              <div className="relative h-8 rounded border border-white/20 overflow-hidden flex items-center justify-center bg-visu-black">
-                 <input 
-                   type="color" 
-                   value={config.brandColor}
-                   onChange={(e) => setConfig({ ...config, brandColor: e.target.value })}
-                   className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer opacity-0"
-                 />
-                 <span className="text-[10px] text-gray-400">CUSTOM</span>
+              <div className="relative w-8 h-8 rounded-full border border-white/20 overflow-hidden flex items-center justify-center bg-white/10">
+                 <input type="color" value={config.brandColor} onChange={(e) => setConfig({ ...config, brandColor: e.target.value })} className="absolute inset-0 w-[200%] h-[200%] -top-1/2 -left-1/2 cursor-pointer opacity-0" />
+                 <span className="text-[8px] font-bold opacity-40">MIX</span>
               </div>
             </div>
           </div>
 
-           {/* Page Numbers Toggle */}
-           <div className="flex items-center gap-3">
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">{t.renderModeLabel}</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button 
+                onClick={() => setConfig({...config, renderMode: 'overlay'})}
+                className={`p-4 rounded-2xl border text-left transition-all
+                  ${config.renderMode === 'overlay' ? 'border-white bg-white/10' : 'border-white/5 bg-white/5 hover:border-white/10'}
+                `}
+              >
+                <div className="text-[10px] font-bold text-white mb-1 uppercase tracking-widest">{t.renderOverlay}</div>
+                <div className="text-[8px] text-gray-500 leading-tight">Texto nítido generado por sistema</div>
+              </button>
+              <button 
+                onClick={() => setConfig({...config, renderMode: 'ai-baked'})}
+                className={`p-4 rounded-2xl border text-left transition-all
+                  ${config.renderMode === 'ai-baked' ? 'border-visu-purple bg-visu-purple/10' : 'border-white/5 bg-white/5 hover:border-white/10'}
+                `}
+              >
+                <div className="text-[10px] font-bold text-visu-purple-light mb-1 uppercase tracking-widest">{t.renderBaked}</div>
+                <div className="text-[8px] text-gray-500 leading-tight">Texto artístico integrado por IA</div>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
               <input 
                 type="checkbox" 
                 id="pageNumbers"
                 checked={config.showPageNumbers}
                 onChange={(e) => setConfig({...config, showPageNumbers: e.target.checked})}
-                className="w-4 h-4 rounded border-gray-600 bg-visu-black accent-current"
-                style={{ color: config.brandColor }}
+                className="w-5 h-5 rounded-lg bg-black border-white/10 accent-visu-purple cursor-pointer"
               />
-              <label htmlFor="pageNumbers" className="text-xs font-bold text-gray-400 uppercase cursor-pointer select-none">
+              <label htmlFor="pageNumbers" className="text-[10px] font-bold text-gray-400 uppercase tracking-widest cursor-pointer select-none">
                 {t.pageNumbers}
               </label>
-           </div>
+          </div>
         </div>
       </div>
 
-      {/* Action Button */}
-      <div className="mt-8">
+      <div className="mt-12">
         <button
           onClick={onGenerate}
           disabled={!isReady || isGenerating}
-          className={`w-full py-4 text-lg font-display font-bold uppercase tracking-wider rounded transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)]
+          className={`w-full py-6 text-sm font-bold uppercase tracking-[0.4em] rounded-3xl transition-all shadow-premium
             ${!isReady 
-              ? 'bg-white/5 text-gray-500 cursor-not-allowed' 
+              ? 'bg-white/5 text-gray-700 cursor-not-allowed border border-white/5' 
               : isGenerating
-                ? 'bg-white/10 text-white animate-pulse cursor-wait'
-                : 'text-visu-black hover:brightness-110'
+                ? 'bg-white/10 text-white animate-pulse'
+                : 'text-white hover:brightness-110 hover:scale-[1.01] active:scale-[0.98]'
             }
           `}
           style={{ 
             backgroundColor: (!isReady || isGenerating) ? undefined : config.brandColor,
-            boxShadow: (!isReady || isGenerating) ? undefined : `0 0 20px ${config.brandColor}40`
+            boxShadow: (!isReady || isGenerating) ? undefined : `0 15px 30px ${config.brandColor}40`
           }}
         >
           {isGenerating ? t.generatingBtn : t.generateBtn}

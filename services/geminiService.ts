@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { SlidePlan, UserConfig, VISUAL_STYLES } from "../types";
 
@@ -48,12 +47,17 @@ export const improveScriptWithAI = async (currentScript: string, profession: str
  * Step 1: Generate the Text Plan (Prompts + Overlay Text Hierarchy)
  */
 export const generateCarouselPlan = async (
-  config: UserConfig
+  config: UserConfig,
+  refinementPrompt?: string // NEW: Optional user feedback for re-planning
 ): Promise<SlidePlan[]> => {
   
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const isCustom = config.mode === 'custom';
   const isBaked = config.renderMode === 'ai-baked';
+  
+  // Resolve style description for the plan generator to understand the vibe
+  const presetStyle = VISUAL_STYLES.find(s => s.id === config.visualStyle);
+  const styleDesc = presetStyle ? presetStyle.description[config.language] : config.visualStyle;
 
   const systemInstruction = `
     You are an expert Visual Director and Content Strategist for high-end social media.
@@ -87,7 +91,7 @@ export const generateCarouselPlan = async (
          - For roughly 35% of slides (Deep Education, Data, Specific Steps), set "includeCharacter": false. Prioritize the infographic/illustration.
     
     Output Language: ${config.language === 'es' ? 'Spanish' : 'English'}.
-    Visual Style: "${config.visualStyle}".
+    Visual Style: "${config.visualStyle}" (${styleDesc}).
     Brand Color: "${config.brandColor}".
     Render Mode: ${isBaked ? "FULL ARTWORK (Text/Lists baked into image)" : "OVERLAY (Clean background for CSS text)"}.
   `;
@@ -114,6 +118,20 @@ export const generateCarouselPlan = async (
     `;
   }
 
+  // --- REFINEMENT LOGIC ---
+  if (refinementPrompt) {
+    prompt += `
+    
+    *** IMPORTANT: USER REGENERATION REQUEST ***
+    The user wants to RE-GENERATE this plan because they were unhappy with the previous result.
+    FEEDBACK: "${refinementPrompt}"
+    
+    - If they say "it was too short", add more slides.
+    - If they say "explanations were weak", make the visual metaphors more literal (charts/diagrams).
+    - If they say "change the tone", adjust the headlines.
+    `;
+  }
+
   prompt += `
     For each slide provide:
     1. "textOverlay": 
@@ -133,7 +151,7 @@ export const generateCarouselPlan = async (
          ? `- VITAL: This is 'AI-BAKED' mode. The image must contain the content.
             - If the slide implies a list, render a stylized 3D list in the air.
             - If it mentions a result (10k views), render that result visually in the scene.
-            - The text "${isCustom ? 'USER HEADLINE' : 'HEADLINE'}" should be integrated (e.g. neon sign, movie poster title).` 
+            - The text integration should be diegetic.` 
          : `- Ensure the subject is positioned to allow space for overlay text. Background clean in one area.`
        }
        - Lighting: Cinematic, featuring ${config.brandColor} accents.
@@ -187,6 +205,79 @@ export const generateCarouselPlan = async (
 };
 
 /**
+ * Step 1.5: Generate a Single Slide Plan (For insertion or CTA)
+ */
+export const generateSingleSlidePlan = async (
+  config: UserConfig,
+  instruction: string,
+  slideContext: 'CTA' | 'INTERMEDIATE'
+): Promise<SlidePlan> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const isBaked = config.renderMode === 'ai-baked';
+  const presetStyle = VISUAL_STYLES.find(s => s.id === config.visualStyle);
+  const styleDesc = presetStyle ? presetStyle.description[config.language] : config.visualStyle;
+
+  const prompt = `
+    You are adding a single slide to an existing carousel about: "${config.topic || config.profession}".
+    
+    GOAL: ${slideContext === 'CTA' ? "Create a powerful Call To Action slide." : "Create an intermediate connection slide."}
+    USER INSTRUCTION: "${instruction}"
+    
+    Visual Style: "${config.visualStyle}" (${styleDesc}).
+    Brand Color: "${config.brandColor}".
+    Language: ${config.language === 'es' ? 'Spanish' : 'English'}.
+
+    Produce a JSON object for this SINGLE slide.
+    
+    - If CTA: Ensure the headline triggers an action (Save, Follow, Comment).
+    - If Intermediate: Ensure it connects ideas smoothly.
+    - VISUALS: Consistent with high-end style.
+  `;
+
+  const schema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+      id: { type: Type.INTEGER }, // Placeholder
+      textOverlay: { 
+        type: Type.OBJECT,
+        properties: {
+          headline: { type: Type.STRING },
+          subheadline: { type: Type.STRING },
+          tagline: { type: Type.STRING }
+        },
+        required: ["headline", "subheadline"]
+      },
+      visualMetaphor: { type: Type.STRING },
+      imagePrompt: { type: Type.STRING },
+      includeCharacter: { type: Type.BOOLEAN },
+    },
+    required: ["textOverlay", "visualMetaphor", "imagePrompt", "includeCharacter"],
+  };
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: schema,
+      },
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No response from AI for single slide");
+    
+    const plan = JSON.parse(text) as SlidePlan;
+    // Ensure ID is unique timestamp
+    plan.id = Date.now();
+    return plan;
+  } catch (error) {
+    console.error("Single Slide Generation Error:", error);
+    throw error;
+  }
+};
+
+/**
  * Step 2: Generate a Single Image using the Reference
  */
 export const generateSlideImage = async (
@@ -201,7 +292,7 @@ export const generateSlideImage = async (
 
   // Resolve the visual style prompt.
   const presetStyle = VISUAL_STYLES.find(s => s.id === config.visualStyle);
-  const styleDescription = presetStyle ? presetStyle.description : config.visualStyle;
+  const styleDescription = presetStyle ? presetStyle.description[config.language] : config.visualStyle;
 
   let fullPrompt = "";
 
@@ -226,10 +317,11 @@ export const generateSlideImage = async (
       The Headline text "${plan.textOverlay.headline}" MUST be NATIVELY INTEGRATED into the environment (Diegetic Text).
       
       INTEGRATION METHOD (Choose based on style '${config.visualStyle}'):
-      - If 'Minimalist': Embossed text on a wall, printed on a book cover, clean 3D letters standing on a desk.
+      - If 'Minimalist' or 'Educational': Clean text on a surface, book, or simple 3D letters. High legibility.
+      - If 'Disruptive' or 'Urban': Graffiti art, torn paper collage, poster on a wall.
       - If 'Cinematic': Cinematic movie title typography floating in depth.
-      - If 'Urban': Graffiti art, poster on a wall.
-      - If 'Tech': Holographic interface.
+      - If 'Cyberpunk' or 'Tech': Holographic interface.
+      - If 'Comic': Speech bubble or hand-drawn caption.
       
       VISUAL COHERENCE:
       - The text must interact with the scene's lighting.
@@ -268,8 +360,8 @@ export const generateSlideImage = async (
       Example: If the text implies 'Writing', show a pen and paper. If 'Analysis', show data.
       
       Style Guidelines: ${styleDescription}.
-      Color Palette: Dominant dark/neutral with accents of ${config.brandColor}.
-      Quality: Hyper-realistic photography, 8k resolution, cinematic lighting.
+      Color Palette: Dominant dark/neutral with accents of ${config.brandColor}. (NOTE: If style is 'Educational' or 'Minimalist', use lighter backgrounds as per style description).
+      Quality: Hyper-realistic photography, 8k resolution, cinematic lighting (or illustration style if style '${config.visualStyle}' demands it).
       
       CHARACTER INSTRUCTION: 
       ${plan.includeCharacter 
@@ -288,9 +380,9 @@ export const generateSlideImage = async (
     The user did not like the previous result. Please adjust based on this feedback:
     "${refinementPrompt}"
     
-    - If they ask to remove something, ensure it is gone.
-    - If they ask to fix the face, prioritize facial fidelity.
-    - If they ask for more brightness, change the lighting.
+    - If they say "it was too short", ensure it is gone.
+    - If they say "fix the face", prioritize facial fidelity.
+    - If they say "change lighting", change the lighting.
     `;
   }
 
