@@ -6,6 +6,7 @@ import { generateCarouselPlan, generateSlideImage, generateSingleSlidePlan } fro
 
 const App: React.FC = () => {
   const [hasKey, setHasKey] = useState(false);
+  const [isAiActive, setIsAiActive] = useState(false);
   const [config, setConfig] = useState<UserConfig>({
     profession: 'Creador Digital',
     topic: '3 Secretos de iluminación para TikTok',
@@ -27,24 +28,33 @@ const App: React.FC = () => {
 
   const t = DICTIONARY[config.language];
 
-  useEffect(() => {
-    const checkKey = async () => {
-      try {
-        // If a key is already selected or provided via environment, skip the gate.
-        if ((window as any).aistudio && await (window as any).aistudio.hasSelectedApiKey()) {
-          setHasKey(true);
-        } else if (process.env.API_KEY) {
-          setHasKey(true);
-        }
-      } catch (e) {
-        console.debug("Initial key check failed, standard behavior if not selected.");
+  const checkKeyStatus = async () => {
+    try {
+      // Direct check of process.env.API_KEY or via aistudio bridge
+      const hasDirectKey = !!process.env.API_KEY && process.env.API_KEY !== "";
+      let hasBridgeKey = false;
+      if ((window as any).aistudio) {
+        hasBridgeKey = await (window as any).aistudio.hasSelectedApiKey();
       }
+      
+      const active = hasDirectKey || hasBridgeKey;
+      setIsAiActive(active);
+      return active;
+    } catch (e) {
+      console.debug("Error checking API key status:", e);
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      const active = await checkKeyStatus();
+      setHasKey(active);
     };
-    checkKey();
+    init();
   }, []);
 
   const handleSelectKey = async () => {
-    // Attempt to open the selector dialog if available
     if ((window as any).aistudio) {
       try {
         await (window as any).aistudio.openSelectKey();
@@ -53,12 +63,26 @@ const App: React.FC = () => {
       }
     }
     
-    // To ensure users aren't stuck (especially on platforms like Netlify where aistudio might not be injected),
-    // we proceed to the app. If no key is set, subsequent API calls will trigger the retry flow.
+    // We assume the selection might have happened and unblock the UI.
+    // The checkKeyStatus call inside the main app will update the real status.
     setHasKey(true);
+    setTimeout(checkKeyStatus, 1000); // Check again after a second
+  };
+
+  const translateError = (msg: string) => {
+    if (msg.includes("API Key must be set")) return t.apiKeyError;
+    if (msg.includes("Requested entity was not found")) return config.language === 'es' ? "Error de API: La Key seleccionada no es válida o no tiene facturación activa." : "API Error: The selected Key is invalid or has no active billing.";
+    return msg;
   };
 
   const handleGenerate = async () => {
+    const isReady = await checkKeyStatus();
+    if (!isReady) {
+      setError(t.apiKeyError);
+      setHasKey(false);
+      return;
+    }
+
     setError(null);
     setStep(GenerationStep.PLANNING);
     setSlides([]);
@@ -75,21 +99,20 @@ const App: React.FC = () => {
           const imageUrl = await generateSlideImage(initialSlides[i], config.referenceImage, config);
           setSlides(prev => prev.map(s => s.id === initialSlides[i].id ? { ...s, status: 'completed', imageUrl } : s));
         } catch (err: any) {
-           setSlides(prev => prev.map(s => s.id === initialSlides[i].id ? { ...s, status: 'error', error: err.message || "Failed" } : s));
+           const translatedMsg = translateError(err.message || "Failed");
+           setSlides(prev => prev.map(s => s.id === initialSlides[i].id ? { ...s, status: 'error', error: translatedMsg } : s));
            
-           // If the key is invalid or missing, reset and show the gate again.
-           if (err.message && (err.message.includes("Requested entity was not found") || err.message.includes("API_KEY"))) {
+           if (err.message && (err.message.includes("API Key must be set") || err.message.includes("Requested entity was not found"))) {
              setHasKey(false);
-             setError(config.language === 'es' 
-               ? "Error de acceso: API Key no configurada o inválida. Por favor, conéctala de nuevo." 
-               : "Access Error: API Key not configured or invalid. Please reconnect.");
+             setIsAiActive(false);
+             setError(translatedMsg);
              return; 
            }
         }
       }
       setStep(GenerationStep.COMPLETED);
     } catch (err: any) {
-      setError(err.message || "Error inesperado.");
+      setError(translateError(err.message || "Error inesperado."));
       setStep(GenerationStep.IDLE);
     }
   };
@@ -102,7 +125,7 @@ const App: React.FC = () => {
       const imageUrl = await generateSlideImage(slide, config.referenceImage, config, refinementPrompt);
       setSlides(prev => prev.map(s => s.id === slideId ? { ...s, status: 'completed', imageUrl } : s));
     } catch (err: any) {
-       setSlides(prev => prev.map(s => s.id === slideId ? { ...s, status: 'error', error: err.message } : s));
+       setSlides(prev => prev.map(s => s.id === slideId ? { ...s, status: 'error', error: translateError(err.message) } : s));
     }
   };
 
@@ -120,12 +143,12 @@ const App: React.FC = () => {
           const imageUrl = await generateSlideImage(initialSlides[i], config.referenceImage, config);
           setSlides(prev => prev.map(s => s.id === initialSlides[i].id ? { ...s, status: 'completed', imageUrl } : s));
         } catch (err: any) {
-           setSlides(prev => prev.map(s => s.id === initialSlides[i].id ? { ...s, status: 'error', error: err.message } : s));
+           setSlides(prev => prev.map(s => s.id === initialSlides[i].id ? { ...s, status: 'error', error: translateError(err.message) } : s));
         }
       }
       setStep(GenerationStep.COMPLETED);
     } catch (err: any) {
-      setError(err.message);
+      setError(translateError(err.message));
       setStep(GenerationStep.IDLE);
     }
   };
@@ -191,24 +214,27 @@ const App: React.FC = () => {
                  Conecta tu Cerebro IA
                </h2>
                <p className="text-gray-400 mb-6 text-sm leading-relaxed">
-                 Esta aplicación utiliza <strong>Gemini 3 Pro</strong> para generar imágenes cinematográficas. 
                  {config.language === 'es' 
-                   ? " Para activarlo, usa el botón de abajo para autorizar tu Key. Si estás en Netlify y el botón no abre una ventana, asegúrate de configurar tu API_KEY en las variables de entorno de tu sitio."
-                   : " To enable it, use the button below to authorize your Key. If on Netlify and the button doesn't open a window, ensure your API_KEY is set in your site's environment variables."}
+                   ? "Esta aplicación utiliza Gemini 3 Pro para generar imágenes de nivel cinematográfico. Es necesario conectar tu cuenta de Google Cloud para activarla."
+                   : "This application uses Gemini 3 Pro to generate cinematic-level images. It is necessary to connect your Google Cloud account to activate it."}
                </p>
                
                <div className="space-y-4 mb-8">
                  <div className="flex gap-4">
                    <div className="text-visu-purple font-mono text-lg">01.</div>
-                   <p className="text-xs text-gray-300">Ve a <a href="https://ai.google.dev/" target="_blank" className="underline text-visu-purple hover:text-visu-purple-light transition-colors">Google AI Studio</a> y obtén tu Key.</p>
+                   <p className="text-xs text-gray-300">
+                     {config.language === 'es' 
+                       ? "Asegúrate de tener tu API Key activa en Google AI Studio."
+                       : "Make sure you have your API Key active in Google AI Studio."}
+                   </p>
                  </div>
                  <div className="flex gap-4">
                    <div className="text-visu-purple font-mono text-lg">02.</div>
-                   <p className="text-xs text-gray-300">Haz clic en el botón de abajo para verificar y entrar.</p>
-                 </div>
-                 <div className="flex gap-4">
-                   <div className="text-visu-purple font-mono text-lg">03.</div>
-                   <p className="text-xs text-gray-300">Si el selector no aparece, procederemos directamente a la app confiando en tu configuración de entorno.</p>
+                   <p className="text-xs text-gray-300">
+                     {config.language === 'es' 
+                       ? "Haz clic en el botón de abajo. Si el selector no aparece, asegúrate de no tener bloqueadores de ventanas emergentes."
+                       : "Click the button below. If the selector does not appear, ensure you do not have pop-up blockers."}
+                   </p>
                  </div>
                </div>
 
@@ -244,10 +270,16 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center gap-4">
              <div className="hidden sm:flex flex-col items-end mr-2">
-                <span className="text-[9px] uppercase font-bold text-gray-500 mb-1">Status</span>
-                <span className="text-[10px] font-bold uppercase py-1 px-3 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 ai-aura">
-                  AI Active
-                </span>
+                <span className="text-[9px] uppercase font-bold text-gray-500 mb-1">{t.statusLabel}</span>
+                {isAiActive ? (
+                  <span className="text-[10px] font-bold uppercase py-1 px-3 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 ai-aura">
+                    {t.statusActive}
+                  </span>
+                ) : (
+                  <span onClick={handleSelectKey} className="text-[10px] font-bold uppercase py-1 px-3 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 cursor-pointer hover:bg-red-500/20 transition-all">
+                    {t.statusInactive}
+                  </span>
+                )}
              </div>
              <button 
                onClick={() => setConfig({...config, language: config.language === 'en' ? 'es' : 'en'})}
@@ -262,6 +294,9 @@ const App: React.FC = () => {
           <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-6 rounded-3xl mb-8 font-medium backdrop-blur-md animate-fade-in flex items-center gap-3 shadow-magic">
              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
              <div className="text-sm">{error}</div>
+             {!isAiActive && (
+               <button onClick={handleSelectKey} className="ml-auto text-[10px] font-bold uppercase underline tracking-widest">{config.language === 'es' ? 'CONECTAR' : 'CONNECT'}</button>
+             )}
           </div>
         )}
 
