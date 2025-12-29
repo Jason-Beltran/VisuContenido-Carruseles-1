@@ -212,7 +212,11 @@ export const DICTIONARY = {
     customStylePlaceholder: 'Custom aesthetic description...',
     selectStyle: 'Style Selection',
     custom: 'Custom',
-    apiKeyError: 'An API Key must be set. Please check your connection.'
+    apiKeyError: 'An API Key must be set. Please check your connection.',
+    manualKeyTitle: 'Manual Connection',
+    manualKeyPlaceholder: 'Paste your Gemini API Key here...',
+    manualKeySave: 'Save & Access App',
+    manualKeyOr: 'OR USE MANUAL ENTRY'
   },
   es: {
     statusLabel: 'ESTADO',
@@ -251,6 +255,10 @@ export const DICTIONARY = {
     customStylePlaceholder: 'Describe tu estética...',
     selectStyle: 'Selección de Estilo',
     custom: 'Personalizado',
-    apiKeyError: 'Se debe configurar una API Key. Por favor, verifica tu conexión.'
+    apiKeyError: 'Se debe configurar una API Key. Por favor, verifica tu conexión.',
+    manualKeyTitle: 'Conexión Manual',
+    manualKeyPlaceholder: 'Pega tu clave de Gemini API aquí...',
+    manualKeySave: 'Guardar y Entrar a la App',
+    manualKeyOr: 'O USA ENTRADA MANUAL'
   }
 };
